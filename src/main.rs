@@ -1,44 +1,12 @@
 extern crate clap;
 extern crate hyper;
 
+mod parser;
+
 use clap::{App, Arg};
 use hyper::rt::{self, Future, Stream};
-use hyper::{Body, Client, Request, Response};
-use std::collections::HashMap;
+use hyper::{Client, Request, Response};
 use std::io::{self, Write};
-
-const HEADER_PARSING_ERROR: &'static str = "Header must be specified as key: value";
-
-fn parse_body<T: Into<String>>(body: Option<T>) -> Body {
-    match body {
-        None => Body::empty(),
-        Some(body) => {
-            let body = body.into();
-            if body.len() > 0 {
-                Body::from(body)
-            } else {
-                Body::empty()
-            }
-        }
-    }
-}
-
-fn parse_headers(headers: clap::Values) -> HashMap<String, String> {
-    let mut ret: HashMap<String, String> = HashMap::new();
-    for header in headers {
-        let mut split = header.split(':');
-        ret.insert(
-            split
-                .clone()
-                .nth(0)
-                .expect(HEADER_PARSING_ERROR)
-                .trim()
-                .to_string(),
-            split.nth(1).expect(HEADER_PARSING_ERROR).trim().to_string(),
-        );
-    }
-    ret
-}
 
 fn handle_response<T>(res: Response<T>) {
     println!("Status: {}", res.status());
@@ -87,9 +55,9 @@ fn main() {
         .value_of("method")
         .expect("Method is not correct")
         .to_string();
-    let body = parse_body(matches.value_of("body"));
+    let body = parser::body(matches.value_of("body"));
     let uri: hyper::Uri = url.parse().expect("URL is not correct");
-    let headers = parse_headers(matches.values_of("headers").unwrap());
+    let headers = parser::headers(matches.values_of("headers").unwrap());
 
     rt::run(rt::lazy(move || {
         let client = Client::new();
