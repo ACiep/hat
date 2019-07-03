@@ -13,7 +13,7 @@ fn handle_response<T>(res: Response<T>) {
 }
 
 fn main() {
-    let matches = App::new("HTTP tester")
+    let matches = App::new("HTTP API tester")
         .version("0.0")
         .about("Tool for testing HTTP requests")
         .arg(
