@@ -2,18 +2,19 @@ extern crate clap;
 extern crate hyper;
 
 mod parser;
+mod request;
 
 use clap::{App, Arg};
-use hyper::rt::{self, Future, Stream};
-use hyper::{Client, Request, Response};
-use std::io::{self, Write};
+use hyper::rt::{self, Future};
+use hyper::{Client, Request as HyperRequest, Response};
+use request::Request;
 
 fn handle_response<T>(res: Response<T>) {
     println!("Status: {}", res.status());
 }
 
-fn main() {
-    let matches = App::new("HTTP API tester")
+fn cli<'a, 'b>() -> App<'a, 'b> {
+    App::new("HTTP API tester")
         .version("0.0")
         .about("Tool for testing HTTP requests")
         .arg(
@@ -48,27 +49,30 @@ fn main() {
                 .multiple(true)
                 .takes_value(true),
         )
-        .get_matches();
+}
 
-    let url = matches.value_of("url").expect("Pass URL value");
-    let method = matches
+fn main() {
+    let options = cli().get_matches();
+
+    let url = options.value_of("url").expect("Pass URL value").to_string();
+    let method = options
         .value_of("method")
         .expect("Method is not correct")
         .to_string();
-    let body = parser::body(matches.value_of("body"));
-    let uri: hyper::Uri = url.parse().expect("URL is not correct");
-    let headers = parser::headers(matches.values_of("headers").unwrap());
+    let body = options.value_of("body");
+    let headers = parser::headers(options.values_of("headers"));
+    let request = Request::new(url, method, headers, body.map(|b| b.to_string()));
 
     rt::run(rt::lazy(move || {
         let client = Client::new();
-        let mut req = Request::builder();
-        for (key, value) in headers {
+        let mut req = HyperRequest::builder();
+        for (key, value) in request.headers {
             req.header(key.as_str(), value.as_str());
         }
         let req = req
-            .uri(uri)
-            .method(method.as_str())
-            .body(body)
+            .uri(&request.url)
+            .method(request.method.as_str())
+            .body(parser::body(request.body))
             .expect("Failed building request");
 
         client.request(req).map(handle_response).map_err(|err| {

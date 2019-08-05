@@ -16,19 +16,24 @@ pub fn body<T: Into<String>>(body: Option<T>) -> hyper::Body {
     }
 }
 
-pub fn headers(headers: clap::Values) -> HashMap<String, String> {
-    let mut ret: HashMap<String, String> = HashMap::new();
-    for header in headers {
-        let mut split = header.split(':');
-        ret.insert(
-            split
-                .clone()
-                .nth(0)
-                .expect(HEADER_PARSING_ERROR)
-                .trim()
-                .to_string(),
-            split.nth(1).expect(HEADER_PARSING_ERROR).trim().to_string(),
-        );
+pub fn headers(headers: Option<clap::Values>) -> HashMap<String, String> {
+    match headers {
+        None => HashMap::new(),
+        Some(h) => {
+            let mut ret: HashMap<String, String> = HashMap::new();
+            for header in h {
+                let mut split = header.split(':');
+                ret.insert(
+                    split
+                        .clone()
+                        .nth(0)
+                        .expect(HEADER_PARSING_ERROR)
+                        .trim()
+                        .to_string(),
+                    split.nth(1).expect(HEADER_PARSING_ERROR).trim().to_string(),
+                );
+            }
+            ret
+        },
     }
-    ret
 }
