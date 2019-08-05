@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies]
 clap = "2.33"
 hyper = "0.12"
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.5"

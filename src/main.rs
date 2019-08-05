@@ -1,10 +1,16 @@
 extern crate clap;
 extern crate hyper;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate toml;
 
+mod config;
 mod parser;
-mod request;
+pub mod request;
 
 use clap::{App, Arg};
+use config::Project;
 use hyper::rt::{self, Future};
 use hyper::{Client, Request as HyperRequest, Response};
 use request::Request;
@@ -49,11 +55,20 @@ fn cli<'a, 'b>() -> App<'a, 'b> {
                 .multiple(true)
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("request name")
+                .help("Save this request")
+                .required(false)
+                .short("s")
+                .long("save")
+                .takes_value(true),
+        )
 }
 
 fn main() {
     let options = cli().get_matches();
 
+    let name = options.value_of("request name");
     let url = options.value_of("url").expect("Pass URL value").to_string();
     let method = options
         .value_of("method")
@@ -61,14 +76,32 @@ fn main() {
         .to_string();
     let body = options.value_of("body");
     let headers = parser::headers(options.values_of("headers"));
-    let request = Request::new(url, method, headers, body.map(|b| b.to_string()));
+    let request = Request::new(
+        url,
+        method,
+        body.map(|b| b.to_string()),
+        headers,
+        name.unwrap_or("").to_string(),
+    );
+
+    match name {
+        None => {}
+        Some(_) => {
+            let project = Project {
+                requests: vec![request.clone()],
+            };
+            project.create().expect("Error saving project file");
+        }
+    }
 
     rt::run(rt::lazy(move || {
         let client = Client::new();
         let mut req = HyperRequest::builder();
+
         for (key, value) in request.headers {
             req.header(key.as_str(), value.as_str());
         }
+
         let req = req
             .uri(&request.url)
             .method(request.method.as_str())
