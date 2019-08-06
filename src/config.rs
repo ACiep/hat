@@ -9,9 +9,29 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn create(&self) -> std::io::Result<()> {
+    fn load() -> std::io::Result<String> {
+        let mut file = File::open(".hat.toml")?;
+        let mut content = String::new();
+        file.read_to_string(&mut content)?;
+        Ok(content)
+    }
+
+    pub fn get() -> Self {
+        toml::from_str(
+            &Project::load()
+                .expect("Could not load your .hat.toml file. Make sure it is in your current working directory."),
+        ).expect("Your .hat.toml file have a syntax error.")
+    }
+
+    pub fn _create(&self) -> std::io::Result<()> {
         let mut file = File::create(".hat.toml")?;
         file.write_all(toml::to_string(self).unwrap().as_bytes())?;
         Ok(())
+    }
+}
+
+impl std::fmt::Display for Project {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Requests: {:?}", self.requests)
     }
 }

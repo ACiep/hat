@@ -9,7 +9,7 @@ mod config;
 mod parser;
 pub mod request;
 
-use clap::{App, Arg};
+use clap::{App, Arg, SubCommand};
 use config::Project;
 use hyper::rt::{self, Future};
 use hyper::{Client, Request as HyperRequest, Response};
@@ -26,7 +26,8 @@ fn cli<'a, 'b>() -> App<'a, 'b> {
         .arg(
             Arg::with_name("url")
                 .help("URL to make request on")
-                .required(true)
+                // TODO
+                // .required_unless("list")
                 .index(1),
         )
         .arg(
@@ -56,44 +57,17 @@ fn cli<'a, 'b>() -> App<'a, 'b> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("request name")
+            Arg::with_name("request to save")
                 .help("Save this request")
                 .required(false)
                 .short("s")
                 .long("save")
                 .takes_value(true),
         )
+        .subcommand(SubCommand::with_name("list"))
 }
 
-fn main() {
-    let options = cli().get_matches();
-
-    let name = options.value_of("request name");
-    let url = options.value_of("url").expect("Pass URL value").to_string();
-    let method = options
-        .value_of("method")
-        .expect("Method is not correct")
-        .to_string();
-    let body = options.value_of("body");
-    let headers = parser::headers(options.values_of("headers"));
-    let request = Request::new(
-        url,
-        method,
-        body.map(|b| b.to_string()),
-        headers,
-        name.unwrap_or("").to_string(),
-    );
-
-    match name {
-        None => {}
-        Some(_) => {
-            let project = Project {
-                requests: vec![request.clone()],
-            };
-            project.create().expect("Error saving project file");
-        }
-    }
-
+fn run_request(request: Request) {
     rt::run(rt::lazy(move || {
         let client = Client::new();
         let mut req = HyperRequest::builder();
@@ -112,4 +86,34 @@ fn main() {
             eprintln!("Error: {}", err);
         })
     }));
+}
+
+fn main() {
+    let options = cli().get_matches();
+
+    match options.subcommand() {
+        ("list", Some(_)) => {
+            let project = Project::get();
+            println!("{}", project);
+        }
+        _ => {
+            let name = options.value_of("request name");
+            let url = options.value_of("url").expect("Pass URL value").to_string();
+            let method = options
+                .value_of("method")
+                .expect("Method is not correct")
+                .to_string();
+            let body = options.value_of("body");
+            let headers = parser::headers(options.values_of("headers"));
+
+            let request = Request::new(
+                url,
+                method,
+                body.map(|b| b.to_string()),
+                headers,
+                name.unwrap_or("").to_string(),
+            );
+            run_request(request);
+        }
+    }
 }
