@@ -23,9 +23,15 @@ impl Project {
         ).expect("Your .hat.toml file have a syntax error.")
     }
 
-    pub fn _create(&self) -> std::io::Result<()> {
+    pub fn create() -> std::io::Result<()> {
         let mut file = File::create(".hat.toml")?;
-        file.write_all(toml::to_string(self).unwrap().as_bytes())?;
+        file.write_all(
+            toml::to_string(&Project {
+                requests: Vec::new(),
+            })
+            .unwrap()
+            .as_bytes(),
+        )?;
         Ok(())
     }
 }

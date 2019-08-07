@@ -64,6 +64,7 @@ fn cli<'a, 'b>() -> App<'a, 'b> {
                 .long("save")
                 .takes_value(true),
         )
+        .subcommand(SubCommand::with_name("init"))
         .subcommand(SubCommand::with_name("list"))
 }
 
@@ -92,6 +93,12 @@ fn main() {
     let options = cli().get_matches();
 
     match options.subcommand() {
+        ("init", Some(_)) => match Project::create() {
+            Err(e) => eprintln!("Error occured. {}", e),
+            Ok(_) => println!(
+                ".hat.toml created. You can now save requests and much more in the future."
+            ),
+        },
         ("list", Some(_)) => {
             let project = Project::get();
             println!("{}", project);
