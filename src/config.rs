@@ -1,5 +1,5 @@
 use crate::request::Request;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use toml;
 
@@ -14,6 +14,15 @@ impl Project {
         let mut content = String::new();
         file.read_to_string(&mut content)?;
         Ok(content)
+    }
+
+    fn save(&self) -> std::io::Result<()> {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(false)
+            .open(".hat.toml")?;
+        file.write_all(toml::to_string(self).unwrap().as_bytes())?;
+        Ok(())
     }
 
     pub fn get() -> Self {
@@ -34,10 +43,21 @@ impl Project {
         )?;
         Ok(())
     }
+
+    pub fn save_request(&mut self, request: Request) {
+        self.requests.push(request);
+        self.save().expect("Error saving file");
+    }
 }
 
 impl std::fmt::Display for Project {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Requests: {:?}", self.requests)
+        let mut requests = String::new();
+
+        for req in &self.requests {
+            requests.push_str(&format!("{}", req));
+        }
+
+        write!(f, "Requests: {}", requests)
     }
 }

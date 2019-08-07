@@ -104,7 +104,7 @@ fn main() {
             println!("{}", project);
         }
         _ => {
-            let name = options.value_of("request name");
+            let name = options.value_of("request to save");
             let url = options.value_of("url").expect("Pass URL value").to_string();
             let method = options
                 .value_of("method")
@@ -120,6 +120,15 @@ fn main() {
                 headers,
                 name.unwrap_or("").to_string(),
             );
+
+            match name {
+                None => {}
+                Some(_) => {
+                    let mut project = Project::get();
+                    project.save_request(request.clone());
+                }
+            }
+
             run_request(request);
         }
     }

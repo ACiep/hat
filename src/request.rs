@@ -28,3 +28,17 @@ impl Request {
         }
     }
 }
+
+impl std::fmt::Display for Request {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "
+{}
+URL: {}
+Method: {}
+",
+            self.name, self.url, self.method
+        )
+    }
+}
