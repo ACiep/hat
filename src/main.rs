@@ -11,13 +11,9 @@ pub mod request;
 
 use clap::{App, Arg, SubCommand};
 use config::Project;
-use hyper::rt::{self, Future};
-use hyper::{Client, Request as HyperRequest, Response};
+use hyper::rt::{self, Future, Stream};
+use hyper::{Client, Request as HyperRequest};
 use request::Request;
-
-fn handle_response<T>(res: Response<T>) {
-    println!("Status: {}", res.status());
-}
 
 fn cli<'a, 'b>() -> App<'a, 'b> {
     App::new("HTTP API tester")
@@ -83,9 +79,18 @@ fn run_request(request: Request) {
             .body(parser::body(request.body))
             .expect("Failed building request");
 
-        client.request(req).map(handle_response).map_err(|err| {
-            eprintln!("Error: {}", err);
-        })
+        client
+            .request(req)
+            .and_then(|res| {
+                println!("Status: {}", res.status());
+                res.into_body().concat2()
+            })
+            .from_err::<hyper::Error>()
+            .and_then(|chunk| Ok(String::from_utf8(chunk.into_bytes().to_vec())))
+            .map(|body| {
+                println!("Body: {}", body.unwrap());
+            })
+            .map_err(|err| eprintln!("Error: {}", err))
     }));
 }
 
