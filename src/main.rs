@@ -5,97 +5,17 @@ extern crate serde;
 extern crate serde_derive;
 extern crate toml;
 
+mod cli;
 mod config;
 mod parser;
 pub mod request;
 
-use clap::{App, Arg, SubCommand};
 use config::Project;
-use hyper::rt::{self, Future, Stream};
-use hyper::{Client, Request as HyperRequest};
+use hyper::rt;
 use request::Request;
 
-fn cli<'a, 'b>() -> App<'a, 'b> {
-    App::new("HTTP API tester")
-        .version("0.0")
-        .about("Tool for testing HTTP requests")
-        .arg(
-            Arg::with_name("url")
-                .help("URL to make request on")
-                // TODO
-                // .required_unless("list")
-                .index(1),
-        )
-        .arg(
-            Arg::with_name("method")
-                .help("HTTP request method")
-                .short("m")
-                .long("method")
-                .takes_value(true)
-                .possible_values(&["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"])
-                .default_value("GET"),
-        )
-        .arg(
-            Arg::with_name("body")
-                .help("Text used to make HTTP request")
-                .required(false)
-                .short("b")
-                .long("body")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("headers")
-                .help("Add HTTP header to request")
-                .required(false)
-                .short("h")
-                .long("header")
-                .multiple(true)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("request to save")
-                .help("Save this request")
-                .required(false)
-                .short("s")
-                .long("save")
-                .takes_value(true),
-        )
-        .subcommand(SubCommand::with_name("init"))
-        .subcommand(SubCommand::with_name("list"))
-}
-
-fn run_request(request: Request) {
-    rt::run(rt::lazy(move || {
-        let client = Client::new();
-        let mut req = HyperRequest::builder();
-
-        for (key, value) in request.headers {
-            req.header(key.as_str(), value.as_str());
-        }
-
-        let req = req
-            .uri(&request.url)
-            .method(request.method.as_str())
-            .body(parser::body(request.body))
-            .expect("Failed building request");
-
-        client
-            .request(req)
-            .and_then(|res| {
-                println!("Status: {}", res.status());
-                res.into_body().concat2()
-            })
-            .from_err::<hyper::Error>()
-            .and_then(|chunk| Ok(String::from_utf8(chunk.into_bytes().to_vec())))
-            .map(|body| {
-                println!("Body: {}", body.unwrap());
-            })
-            .map_err(|err| eprintln!("Error: {}", err))
-    }));
-}
-
 fn main() {
-    let options = cli().get_matches();
+    let options = cli::cli().get_matches();
 
     match options.subcommand() {
         ("init", Some(_)) => match Project::create() {
@@ -134,7 +54,7 @@ fn main() {
                 }
             }
 
-            run_request(request);
+            rt::run(rt::lazy(move || request.run()));
         }
     }
 }
